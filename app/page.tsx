@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
+import { isAuthenticated } from "@/lib/auth"
 
-export default function Page() {
-  redirect("/dashboard")
+export default async function Page() {
+  redirect((await isAuthenticated()) ? "/dashboard" : "/login")
 }
