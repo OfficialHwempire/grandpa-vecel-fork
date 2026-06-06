@@ -1,11 +1,18 @@
 import Link from "next/link"
+import { redirect } from "next/navigation"
 import { getTables } from "@/lib/supabase/db"
+import { isAuthenticated } from "@/lib/auth"
+import { SignOutButton } from "@/components/sign-out-button"
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  if (!(await isAuthenticated())) {
+    redirect("/login")
+  }
+
   let tables: { name: string }[] = []
   let tablesError: string | null = null
   try {
@@ -22,6 +29,7 @@ export default async function DashboardLayout({
             Database
           </Link>
         </div>
+        <SignOutButton />
       </header>
 
       <div className="flex flex-1">
