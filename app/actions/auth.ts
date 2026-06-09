@@ -1,21 +1,14 @@
 "use server"
 
-import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
-import {
-  AUTH_COOKIE,
-  registerUser,
-  verifyUser,
-  createSession,
-  destroySession,
-} from "@/lib/auth"
+import { createClient } from "@/lib/supabase/server"
+import { createClient as createAdminClient } from "@supabase/supabase-js"
 
-const sessionCookieOptions = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-  path: "/",
-  maxAge: 60 * 60 * 24 * 7, // 7 days
+function createAdmin() {
+  return createAdminClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  )
 }
 
 function readCredentials(formData: FormData) {
@@ -25,51 +18,77 @@ function readCredentials(formData: FormData) {
   }
 }
 
-export async function signIn(_prevState: { error?: string } | undefined, formData: FormData) {
+async function getStaffPositionId(
+  admin: ReturnType<typeof createAdminClient>,
+): Promise<string | null> {
+  const { data: positions } = await admin.from("positions").select("*")
+  if (!positions || positions.length === 0) return null
+
+  // name_ko 컬럼에서 '스태프' 검색, 없으면 첫 번째 행
+  const staff = positions.find(
+    (p: Record<string, unknown>) => typeof p.name_ko === "string" && p.name_ko.includes("스태프"),
+  )
+  return String((staff ?? positions[0]).id)
+}
+
+export async function signIn(
+  _prevState: { error?: string } | undefined,
+  formData: FormData,
+) {
   const { email, password } = readCredentials(formData)
+  if (!email || !password) return { error: "Email and password are required." }
 
-  if (!email || !password) {
-    return { error: "Email and password are required." }
-  }
-
-  const { error, userId } = verifyUser(email, password)
-  if (error || !userId) {
-    return { error: error ?? "Unable to sign in." }
-  }
-
-  const sessionId = createSession(userId)
-  const store = await cookies()
-  store.set(AUTH_COOKIE, sessionId, sessionCookieOptions)
+  const supabase = await createClient()
+  const { error } = await supabase.auth.signInWithPassword({ email, password })
+  if (error) return { error: error.message }
 
   redirect("/dashboard")
 }
 
-export async function register(_prevState: { error?: string } | undefined, formData: FormData) {
+export async function register(
+  _prevState: { error?: string } | undefined,
+  formData: FormData,
+) {
   const { email, password } = readCredentials(formData)
+  if (!email || !password) return { error: "Email and password are required." }
+  if (password.length < 6) return { error: "Password must be at least 6 characters." }
 
-  if (!email || !password) {
-    return { error: "Email and password are required." }
-  }
-  if (password.length < 6) {
-    return { error: "Password must be at least 6 characters." }
-  }
+  // 초대된 이메일인지 확인
+  const admin = createAdmin()
+  const { data: invitation } = await admin
+    .from("invitations")
+    .select("email")
+    .eq("email", email)
+    .maybeSingle()
 
-  const { error, userId } = registerUser(email, password)
-  if (error || !userId) {
-    return { error: error ?? "Unable to register." }
-  }
+  if (!invitation) return { error: "초대된 이메일만 가입할 수 있습니다." }
 
-  const sessionId = createSession(userId)
-  const store = await cookies()
-  store.set(AUTH_COOKIE, sessionId, sessionCookieOptions)
+  const supabase = await createClient()
+  const { data, error } = await supabase.auth.signUp({ email, password })
+  if (error) return { error: error.message }
+
+  if (data.user) {
+    const admin = createAdmin()
+    const positionId = await getStaffPositionId(admin)
+
+    if (positionId) {
+      // 이름 기본값: 이메일 @ 앞부분
+      const defaultName = email.split("@")[0]
+      await admin.from("users").insert({
+        id: data.user.id,
+        email: data.user.email,
+        name: defaultName,
+        position_id: positionId,
+        status: "재직",
+      })
+    }
+  }
 
   redirect("/dashboard")
 }
 
 export async function signOut() {
-  const store = await cookies()
-  const sessionId = store.get(AUTH_COOKIE)?.value
-  if (sessionId) destroySession(sessionId)
-  store.delete(AUTH_COOKIE)
+  const supabase = await createClient()
+  await supabase.auth.signOut()
   redirect("/login")
 }

@@ -1,61 +1,50 @@
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTables } from "@/lib/supabase/db"
-import { isAuthenticated } from "@/lib/auth"
+import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { SignOutButton } from "@/components/sign-out-button"
+import { DashboardSidebar } from "@/components/dashboard-sidebar"
 
 export default async function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
-  if (!(await isAuthenticated())) {
-    redirect("/login")
-  }
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect("/login")
+
+  const admin = createAdminClient()
+
+  // 현재 유저의 직책 확인
+  const { data: userData } = await admin
+    .from("users")
+    .select("positions(name_ko)")
+    .eq("id", user.id)
+    .single()
+
+  const positionName = (userData?.positions as { name_ko: string } | null)?.name_ko ?? ""
+  const isManager = positionName === "점장"
 
   let tables: { name: string }[] = []
-  let tablesError: string | null = null
   try {
     tables = await getTables()
-  } catch (e) {
-    tablesError = e instanceof Error ? e.message : "Could not load tables"
+  } catch {
+    // sidebar renders without table list
   }
 
   return (
     <div className="flex min-h-svh flex-col bg-background text-foreground">
       <header className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
-            Database
-          </Link>
-        </div>
+        <Link href="/dashboard" className="text-lg font-semibold tracking-tight">
+          Dashboard
+        </Link>
         <SignOutButton />
       </header>
 
       <div className="flex flex-1">
-        <aside className="w-60 shrink-0 border-r border-border p-4">
-          <p className="px-2 pb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Tables
-          </p>
-          {tablesError ? (
-            <p className="px-2 text-sm text-destructive">{tablesError}</p>
-          ) : tables.length === 0 ? (
-            <p className="px-2 text-sm text-muted-foreground">No tables found.</p>
-          ) : (
-            <nav className="flex flex-col gap-1">
-              {tables.map((t) => (
-                <Link
-                  key={t.name}
-                  href={`/dashboard/${encodeURIComponent(t.name)}`}
-                  className="rounded-md px-2 py-1.5 font-mono text-sm text-foreground transition-colors hover:bg-muted"
-                >
-                  {t.name}
-                </Link>
-              ))}
-            </nav>
-          )}
-        </aside>
-
+        <DashboardSidebar tables={tables} isManager={isManager} />
         <main className="flex-1 p-6">{children}</main>
       </div>
     </div>
