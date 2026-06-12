@@ -1,3 +1,7 @@
+"use client"
+
+import Image from "next/image"
+import { useState } from "react"
 import {
   Table,
   TableBody,
@@ -7,11 +11,84 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp"]
+
+// Matches RAW-SDS-001, PROD-SDS-001, RAW-PACK_AUX-002, etc.
+const CODE_RE = /^(?:RAW|PROD)-([A-Z][A-Z0-9_]*)-(\d+)$/i
+
+function deriveImageSrc(code: string, extIdx: number): string | null {
+  const match = code.match(CODE_RE)
+  if (!match) return null
+  const category = match[1].toUpperCase()
+  const num = match[2]
+  return `/api/images/${category}/${category}-${num}.${IMAGE_EXTS[extIdx]}`
+}
+
+function PhotoCell({ row }: { row: Record<string, unknown> }) {
+  const code = String(row["raw_code"] ?? row["prod_code"] ?? "")
+  const [extIdx, setExtIdx] = useState(0)
+  const [failed, setFailed] = useState(false)
+
+  const src = !failed ? deriveImageSrc(code, extIdx) : null
+
+  if (!src) return <span className="text-muted-foreground">-</span>
+
+  return (
+    <Image
+      src={src}
+      alt={code}
+      width={100}
+      height={100}
+      className="rounded object-contain"
+      onError={() => {
+        if (extIdx + 1 < IMAGE_EXTS.length) setExtIdx(extIdx + 1)
+        else setFailed(true)
+      }}
+      unoptimized
+    />
+  )
+}
+
 function formatCell(value: unknown): string {
   if (value === null || value === undefined) return ""
   if (typeof value === "object") return JSON.stringify(value)
   if (typeof value === "boolean") return value ? "true" : "false"
   return String(value)
+}
+
+function CodeImageCell({ code }: { code: string }) {
+  const [extIdx, setExtIdx] = useState(0)
+  const [failed, setFailed] = useState(false)
+
+  const src = !failed ? deriveImageSrc(code, extIdx) : null
+
+  if (!src) return <span className="font-mono text-xs">{code}</span>
+
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <Image
+        src={src}
+        alt={code}
+        width={100}
+        height={100}
+        className="rounded object-contain"
+        onError={() => {
+          if (extIdx + 1 < IMAGE_EXTS.length) setExtIdx(extIdx + 1)
+          else setFailed(true)
+        }}
+        unoptimized
+      />
+      <span className="font-mono text-xs text-muted-foreground">{code}</span>
+    </div>
+  )
+}
+
+function CellContent({ col, value, row }: { col: string; value: unknown; row: Record<string, unknown> }) {
+  if (col === "photo") return <PhotoCell row={row} />
+  const text = formatCell(value)
+  if (text === "") return <span className="text-muted-foreground">null</span>
+  if (CODE_RE.test(text)) return <CodeImageCell code={text.toUpperCase()} />
+  return <span title={text}>{text}</span>
 }
 
 export function DataTable({
@@ -44,14 +121,11 @@ export function DataTable({
         <TableBody>
           {rows.map((row, i) => (
             <TableRow key={i}>
-              {columns.map((col) => {
-                const text = formatCell(row[col])
-                return (
-                  <TableCell key={col} className="max-w-xs truncate font-mono text-xs" title={text}>
-                    {text === "" ? <span className="text-muted-foreground">null</span> : text}
-                  </TableCell>
-                )
-              })}
+              {columns.map((col) => (
+                <TableCell key={col} className="max-w-xs font-mono text-xs">
+                  <CellContent col={col} value={row[col]} row={row} />
+                </TableCell>
+              ))}
             </TableRow>
           ))}
         </TableBody>
