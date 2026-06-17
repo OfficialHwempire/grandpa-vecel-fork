@@ -19,10 +19,12 @@ export default async function TablePage({
   const offset = (currentPage - 1) * PAGE_SIZE
 
   let columns: string[] = []
+  let pkColumn: string | null = null
   try {
     const tables = await getTables()
     const match = tables.find((t) => t.name === tableName)
     columns = match?.columns.map((c) => c.name) ?? []
+    if (columns.includes("id")) pkColumn = "id"
   } catch {
     // fall back to columns derived from rows below
   }
@@ -40,6 +42,7 @@ export default async function TablePage({
 
   if (columns.length === 0 && rows.length > 0) {
     columns = Object.keys(rows[0])
+    if (!pkColumn && columns.includes("id")) pkColumn = "id"
   }
 
   const totalPages = total !== null ? Math.max(1, Math.ceil(total / PAGE_SIZE)) : null
@@ -63,7 +66,7 @@ export default async function TablePage({
         </div>
       ) : (
         <>
-          <DataTable columns={columns} rows={rows} />
+          <DataTable columns={columns} rows={rows} tableName={tableName} pkColumn={pkColumn} />
 
           {totalPages !== null && totalPages > 1 && (
             <div className="flex items-center justify-between">

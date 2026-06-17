@@ -102,6 +102,35 @@ export async function getTableRows(table: string, limit = 50, offset = 0): Promi
 }
 
 /**
+ * Update a single row in a table, identified by the given primary key column/value.
+ */
+export async function updateTableRow(
+  table: string,
+  pkColumn: string,
+  pkValue: string,
+  updates: Record<string, unknown>,
+): Promise<void> {
+  const filter = `${encodeURIComponent(pkColumn)}=eq.${encodeURIComponent(pkValue)}`
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${encodeURIComponent(table)}?${filter}`, {
+    method: "PATCH",
+    headers: {
+      ...authHeaders(),
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(updates),
+  })
+
+  if (!res.ok) {
+    let body = ""
+    try {
+      body = await res.text()
+    } catch {}
+    throw new Error(`HTTP ${res.status}: ${body}`)
+  }
+}
+
+/**
  * Fetch just the exact row count for a table (cheap HEAD-style request).
  */
 export async function getTableCount(table: string): Promise<number | null> {
