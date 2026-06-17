@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { getTableCount } from "@/lib/supabase/db"
-import { Package, Tag, Factory } from "lucide-react"
+import { Package, Tag, Factory, Users } from "lucide-react"
 
 const TABLES = [
   {
@@ -27,6 +27,14 @@ const TABLES = [
     color: "text-emerald-500",
     bg: "bg-emerald-50 hover:bg-emerald-100 border-emerald-100 hover:border-emerald-300",
   },
+  {
+    label: "유저 테이블",
+    table: "users",
+    icon: Users,
+    description: "사용자 계정 데이터를 조회합니다",
+    color: "text-purple-500",
+    bg: "bg-purple-50 hover:bg-purple-100 border-purple-100 hover:border-purple-300",
+  },
 ] as const
 
 export default async function DataTablePage() {
@@ -49,7 +57,7 @@ export default async function DataTablePage() {
         <p className="mt-1 text-sm text-muted-foreground">조회할 테이블을 선택하세요</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
         {TABLES.map(({ label, table, icon: Icon, description, color, bg }) => {
           const count = countMap.get(table)
           return (
