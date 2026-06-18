@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Users, Database, Cog, Bug, BookText, ClipboardList, LayoutDashboard } from "lucide-react"
+import { Users, Database, Cog, Bug, BookText, ClipboardList, LayoutDashboard, FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { SignOutButton } from "@/components/sign-out-button"
 
@@ -22,6 +22,7 @@ export function DashboardSidebar({
     { label: "데이터 테이블", href: "/dashboard/data-table", icon: Database, visible: true },
     { label: "생산 공정", href: "/dashboard/production", icon: Cog, visible: true },
     { label: "생산 공정 작성", href: "/dashboard/production-write", icon: ClipboardList, visible: true },
+    { label: "생산일지", href: "/dashboard/production-log", icon: FileText, visible: true },
     { label: "버그 리포트", href: "/dashboard/bug-report", icon: Bug, visible: true },
     { label: "레시피 가이드", href: "/dashboard/recipe-guide", icon: BookText, visible: true },
   ]
