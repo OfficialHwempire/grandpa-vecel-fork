@@ -128,3 +128,88 @@
     @apply font-sans;
   }
 }
+
+/* Tiptap rich text editor content styles */
+.tiptap-editor .ProseMirror {
+  outline: none;
+  min-height: 300px;
+  line-height: 1.7;
+  color: var(--foreground);
+}
+
+.tiptap-editor .ProseMirror p {
+  margin: 0 0 0.5em;
+}
+
+.tiptap-editor .ProseMirror h1 {
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0.8em 0 0.4em;
+}
+
+.tiptap-editor .ProseMirror h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+  margin: 0.7em 0 0.35em;
+}
+
+.tiptap-editor .ProseMirror h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.6em 0 0.3em;
+}
+
+.tiptap-editor .ProseMirror ul {
+  list-style-type: disc;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.tiptap-editor .ProseMirror ol {
+  list-style-type: decimal;
+  padding-left: 1.5em;
+  margin: 0.5em 0;
+}
+
+.tiptap-editor .ProseMirror li {
+  margin: 0.2em 0;
+}
+
+.tiptap-editor .ProseMirror img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+  margin: 0.5em 0;
+  display: block;
+}
+
+.tiptap-editor .ProseMirror mark {
+  border-radius: 0.2em;
+  padding: 0 0.1em;
+}
+
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--muted-foreground);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Recipe guide rendered content (read mode) */
+.recipe-content h1 { font-size: 1.875rem; font-weight: 700; line-height: 1.25; margin: 0.8em 0 0.4em; }
+.recipe-content h2 { font-size: 1.5rem; font-weight: 600; margin: 0.7em 0 0.35em; }
+.recipe-content h3 { font-size: 1.25rem; font-weight: 600; margin: 0.6em 0 0.3em; }
+.recipe-content p { margin: 0 0 0.5em; line-height: 1.7; }
+.recipe-content ul { list-style-type: disc; padding-left: 1.5em; margin: 0.5em 0; }
+.recipe-content ol { list-style-type: decimal; padding-left: 1.5em; margin: 0.5em 0; }
+.recipe-content li { margin: 0.2em 0; }
+.recipe-content img { max-width: 100%; height: auto; border-radius: 0.375rem; margin: 0.5em 0; }
+.recipe-content mark { border-radius: 0.2em; padding: 0 0.1em; }
+.recipe-content strong { font-weight: 700; }
+.recipe-content em { font-style: italic; }
+.recipe-content u { text-decoration: underline; }
+.recipe-content s { text-decoration: line-through; }
