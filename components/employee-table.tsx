@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useTransition } from "react"
-import { updateUserStatus, updateUserPosition } from "@/app/actions/users"
+import { updateUserStatus, updateUserPosition, updateUserField } from "@/app/actions/users"
 import { cn } from "@/lib/utils"
 
 const STATUS_OPTIONS = ["재직", "휴직", "퇴사"] as const
@@ -73,6 +73,15 @@ function UserRow({
 }) {
   const [status, setStatus] = useState(String(user.status ?? "재직"))
   const [positionId, setPositionId] = useState(String(user.position_id ?? ""))
+  const [fieldValues, setFieldValues] = useState<Record<string, string>>(() => {
+    const init: Record<string, string> = {}
+    for (const col of columns) {
+      if (col !== "status" && col !== "position_id") {
+        init[col] = user[col] === null || user[col] === undefined ? "" : String(user[col])
+      }
+    }
+    return init
+  })
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
 
@@ -99,6 +108,20 @@ function UserRow({
         await updateUserPosition(user.id, newPositionId)
       } catch (e) {
         setPositionId(prev)
+        setError(e instanceof Error ? e.message : "변경 실패")
+      }
+    })
+  }
+
+  function handleFieldBlur(col: string, value: string) {
+    const original = user[col] === null || user[col] === undefined ? "" : String(user[col])
+    if (value === original) return
+    setError(null)
+    startTransition(async () => {
+      try {
+        await updateUserField(user.id, col, value)
+      } catch (e) {
+        setFieldValues((prev) => ({ ...prev, [col]: original }))
         setError(e instanceof Error ? e.message : "변경 실패")
       }
     })
@@ -137,14 +160,22 @@ function UserRow({
                   <option key={p.id} value={p.id}>{p.label}</option>
                 ))}
               </select>
-            ) : (
-              <span className={cn("font-mono text-xs", col === "id" && "text-muted-foreground")}>
-                {user[col] === null || user[col] === undefined ? (
-                  <span className="text-muted-foreground/40">null</span>
-                ) : (
-                  String(user[col])
-                )}
+            ) : col === "id" ? (
+              <span className="font-mono text-xs text-muted-foreground">
+                {String(user[col] ?? "")}
               </span>
+            ) : (
+              <input
+                value={fieldValues[col] ?? ""}
+                disabled={isPending}
+                onChange={(e) => setFieldValues((prev) => ({ ...prev, [col]: e.target.value }))}
+                onBlur={(e) => handleFieldBlur(col, e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur() }}
+                className={cn(
+                  "w-full min-w-[80px] rounded border border-transparent bg-transparent px-1 py-0.5 font-mono text-xs outline-none hover:border-border focus:border-ring focus:ring-1 focus:ring-ring",
+                  isPending && "cursor-not-allowed opacity-50",
+                )}
+              />
             )}
           </td>
         ))}
