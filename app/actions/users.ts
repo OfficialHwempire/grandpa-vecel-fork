@@ -35,3 +35,7 @@ export async function updateUserStatus(userId: unknown, status: string) {
 export async function updateUserPosition(userId: unknown, positionId: string) {
   await patchUser(userId, { position_id: positionId })
 }
+
+export async function updateUserField(userId: unknown, field: string, value: string) {
+  await patchUser(userId, { [field]: value })
+}
