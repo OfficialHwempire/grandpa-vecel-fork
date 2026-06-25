@@ -14,6 +14,15 @@ import { updateRow } from "@/app/actions/table-edit"
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp"]
 
+// 테이블.컬럼 → 선택지 목록 (이 컬럼은 select 드롭다운으로 편집)
+const ENUM_COLUMNS: Record<string, { value: string; label: string; className: string }[]> = {
+  "tb_production_process.status": [
+    { value: "pending",  label: "검토 대기중", className: "bg-yellow-100 text-yellow-700 border-yellow-200" },
+    { value: "approved", label: "승인됨",      className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+    { value: "rejected", label: "반려됨",      className: "bg-red-100 text-red-700 border-red-200" },
+  ],
+}
+
 const CODE_RE = /^(?:RAW|PROD)-([A-Z][A-Z0-9_]*)-(\d+)$/i
 
 function deriveImageSrc(code: string, extIdx: number): string | null {
@@ -126,48 +135,84 @@ function EditableCell({
   const canEdit = col !== pkColumn && col !== "photo"
   const originalStr = formatCell(value)
 
+  const enumKey = `${tableName}.${col}`
+  const enumOpts = ENUM_COLUMNS[enumKey] ?? null
+
+  const commitSave = useCallback(
+    async (val: string) => {
+      setEditing(false)
+      if (val === originalStr || (val === "" && (value === null || value === undefined))) return
+
+      setSaving(true)
+      const originalType = value === null || value === undefined ? "null" : typeof value
+      const result = await updateRow(tableName, pkColumn, pkValue, col, val, originalType)
+      setSaving(false)
+
+      if (result.error) {
+        onError({
+          timestamp: new Date().toLocaleString("ko-KR"),
+          column: col,
+          pkValue,
+          attempted: val,
+          message: result.error,
+        })
+      } else {
+        let newValue: unknown = val
+        if (val === "" || val === "null") newValue = null
+        else if (originalType === "number") {
+          const n = Number(val)
+          if (!isNaN(n)) newValue = n
+        } else if (originalType === "boolean") {
+          if (val === "true") newValue = true
+          else if (val === "false") newValue = false
+        }
+        onRowUpdate(pkValue, col, newValue)
+      }
+    },
+    [originalStr, value, tableName, pkColumn, pkValue, col, onRowUpdate, onError],
+  )
+
   const handleSave = useCallback(async () => {
     if (escapeRef.current) {
       escapeRef.current = false
       return
     }
-    setEditing(false)
-
-    if (editStr === originalStr || (editStr === "" && (value === null || value === undefined))) {
-      return
-    }
-
-    setSaving(true)
-    const originalType = value === null || value === undefined ? "null" : typeof value
-    const result = await updateRow(tableName, pkColumn, pkValue, col, editStr, originalType)
-    setSaving(false)
-
-    if (result.error) {
-      onError({
-        timestamp: new Date().toLocaleString("ko-KR"),
-        column: col,
-        pkValue,
-        attempted: editStr,
-        message: result.error,
-      })
-    } else {
-      let newValue: unknown = editStr
-      if (editStr === "" || editStr === "null") newValue = null
-      else if (originalType === "number") {
-        const n = Number(editStr)
-        if (!isNaN(n)) newValue = n
-      } else if (originalType === "boolean") {
-        if (editStr === "true") newValue = true
-        else if (editStr === "false") newValue = false
-      }
-      onRowUpdate(pkValue, col, newValue)
-    }
-  }, [editStr, originalStr, value, tableName, pkColumn, pkValue, col, onRowUpdate, onError])
+    await commitSave(editStr)
+  }, [editStr, commitSave])
 
   if (!canEdit) {
     return <CellContent col={col} value={value} row={row} />
   }
 
+  // ── enum select 편집 모드 ──
+  if (editing && enumOpts) {
+    return (
+      <select
+        value={editStr}
+        autoFocus
+        onChange={(e) => {
+          setEditStr(e.target.value)
+          commitSave(e.target.value)
+        }}
+        onBlur={() => setEditing(false)}
+        onKeyDown={(e) => {
+          if (e.key === "Escape") {
+            e.preventDefault()
+            setEditing(false)
+          }
+        }}
+        className="rounded border border-ring bg-background px-1 py-0.5 text-xs outline-none ring-1 ring-ring"
+      >
+        {enumOpts.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+    )
+  }
+
+  // ── 일반 텍스트 편집 모드 ──
   if (editing) {
     return (
       <input
@@ -191,6 +236,9 @@ function EditableCell({
     )
   }
 
+  // ── 표시 모드 ──
+  const enumDisplay = enumOpts?.find((o) => o.value === originalStr)
+
   return (
     <div
       onClick={() => {
@@ -204,6 +252,10 @@ function EditableCell({
     >
       {saving ? (
         <span className="font-mono text-xs text-muted-foreground italic">저장 중...</span>
+      ) : enumDisplay ? (
+        <span className={`inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium ${enumDisplay.className}`}>
+          {enumDisplay.label}
+        </span>
       ) : (
         <CellContent col={col} value={value} row={row} />
       )}

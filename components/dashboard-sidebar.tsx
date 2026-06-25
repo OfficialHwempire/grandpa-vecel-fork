@@ -20,8 +20,8 @@ export function DashboardSidebar({
     { label: "홈", href: "/dashboard", icon: LayoutDashboard, visible: true, exact: true },
     { label: "직원 관리", href: "/dashboard/employees", icon: Users, visible: isManager },
     { label: "데이터 테이블", href: "/dashboard/data-table", icon: Database, visible: true },
-    { label: "생산 공정", href: "/dashboard/production", icon: Cog, visible: true },
-    { label: "생산 공정 작성", href: "/dashboard/production-write", icon: ClipboardList, visible: true },
+    { label: "생산 공정", href: "/dashboard/production", icon: Cog, visible: true, exact: true },
+    { label: "생산 공정 작성", href: "/dashboard/production-write", icon: ClipboardList, visible: true, exact: true },
     { label: "생산일지", href: "/dashboard/production-log", icon: FileText, visible: true },
     { label: "버그 리포트", href: "/dashboard/bug-report", icon: Bug, visible: true },
     { label: "레시피 가이드", href: "/dashboard/recipe-guide", icon: BookText, visible: true },
@@ -76,6 +76,7 @@ export function DashboardSidebar({
               { label: "원자재 테이블", table: "tb_raw_mst" },
               { label: "카테고리 테이블", table: "tb_category_mst" },
               { label: "생산품 테이블", table: "tb_prod_mst" },
+              { label: "생산 공정 테이블", table: "tb_production_process" },
             ].map(({ label, table }) => {
               const isActive =
                 pathname === `/dashboard/data-table/${encodeURIComponent(table)}`
